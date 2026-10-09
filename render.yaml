@@ -1,0 +1,62 @@
+# Render Blueprint for CampusSlot.
+# Set RESEND_API_KEY, RESEND_FROM_EMAIL, CELERY_BROKER_URL and BASE_URL in Render.
+# Use the same CELERY_BROKER_URL (Redis) for both services.
+services:
+  - type: web
+    name: campusslot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-postgres.txt
+    startCommand: gunicorn run:app --workers 2 --threads 4 --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: campusslot-db
+          property: connectionString
+      - key: BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: APPOINTMENT_TIMEZONE
+        value: Asia/Kolkata
+  - type: worker
+    name: campusslot-email-worker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements-postgres.txt
+    startCommand: celery -A celery_app.celery worker --loglevel=INFO --concurrency=2
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false
+      - key: ADMIN_SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: APPOINTMENT_TIMEZONE
+        value: Asia/Kolkata
+
+databases:
+  - name: campusslot-db
+    databaseName: campusslot
+    user: campusslot_user
+    plan: free
